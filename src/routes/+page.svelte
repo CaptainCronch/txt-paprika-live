@@ -1,6 +1,6 @@
 <script lang="js">
-    import { read } from "$app/server";
     import * as json from "$lib/assets/dialogue.json"
+    import { noise } from "$lib/assets/noise.js"
     import { onMount } from "svelte";
 
     const punctuationSpeeds = {
@@ -62,13 +62,13 @@
 
         if (splitDialogue[sectionIndex].text.charAt(0) == "\n") { // make sure newlines actually newline in html
             visible += "<br>"
-        } else if (splitDialogue[sectionIndex].moveEffect == "shake") {
-            visible += `<span class="shake">${splitDialogue[sectionIndex].text.charAt(0)}</span>`
-        } else if (splitDialogue[sectionIndex].moveEffect == "float") {
+        } else if (splitDialogue[sectionIndex].moveEffect == "shake" && splitDialogue[sectionIndex].text.charAt(0) != " ") {
+            visible += `<span class="shake" style="position:relative;top:0px;left:0px;">${splitDialogue[sectionIndex].text.charAt(0)}</span>`
+        } else if (splitDialogue[sectionIndex].moveEffect == "float" && splitDialogue[sectionIndex].text.charAt(0) != " ") {
             visible += `<span class="float">${splitDialogue[sectionIndex].text.charAt(0)}</span>`
-        } else if (splitDialogue[sectionIndex].moveEffect == "sweep") {
+        } else if (splitDialogue[sectionIndex].moveEffect == "sweep" && splitDialogue[sectionIndex].text.charAt(0) != " ") {
             visible += `<span class="sweep">${splitDialogue[sectionIndex].text.charAt(0)}</span>`
-        } else if (splitDialogue[sectionIndex].moveEffect == "wave") {
+        } else if (splitDialogue[sectionIndex].moveEffect == "wave" && splitDialogue[sectionIndex].text.charAt(0) != " ") {
             visible += `<span class="wave">${splitDialogue[sectionIndex].text.charAt(0)}</span>`
         } else {
             visible += splitDialogue[sectionIndex].text.charAt(0)
@@ -94,17 +94,35 @@
         setTimeout(addLetter, charSpeed)
     }
 
+    /**
+     * @param {number} num
+     * @param {number} lower
+     * @param {number} upper
+     */
+    function clamp(num, lower, upper) {
+        return Math.min(Math.max(num, lower), upper);
+    }
+
     onMount(() => {
         let shakeLastTime = document.timeline.currentTime
         /** @param {number} time */
         function shake(time) {
-            const power = 700
-            let delta = (time - Number(shakeLastTime))/1000
+            // const maxRange = 4
+            const power = 2
+            const timeFactor = 100
+            // let delta = (time - Number(shakeLastTime))/1000
             let shakers = document.getElementsByClassName("shake")
+            let i = 0
             for (let element of shakers) {
-                element.setAttribute("style", `position:relative;top:${((Math.random()*power)-(power/2))*delta}px;left:${((Math.random()*power)-(power/2))*delta}px;`) // per-character shake effect
+                noise().seed(Math.random())
+                element.setAttribute("style",
+                    `position:relative;
+                    top:${(((noise().simplex2(time/timeFactor + i, time/timeFactor + i) * power) - (power / 2)))}px;
+                    left:${(((noise().perlin2(time/timeFactor + i, time/timeFactor + i) * power) - (power / 2)))}px;`
+                ) // per-character shake effect
+                i += 1
             }
-            shakeLastTime = time
+            // shakeLastTime = time
             requestAnimationFrame(shake)
         }
         requestAnimationFrame(shake)
@@ -117,7 +135,7 @@
             let floaters = document.getElementsByClassName("float")
             let i = 0
             for (let element of floaters) {
-                element.setAttribute("style", `position:relative;top:${Math.sin((time * speed) + i) * amplitude}px;`) // per-character float effect
+                element.setAttribute("style", `position:relative;top:${Math.sin((time * speed) - i) * amplitude}px;`) // per-character float effect
                 i += frequency
             }
             requestAnimationFrame(float)
@@ -132,7 +150,7 @@
             let sweepers = document.getElementsByClassName("sweep")
             let i = 0
             for (let element of sweepers) {
-                element.setAttribute("style", `position:relative;left:${Math.cos((time * speed) + i) * amplitude}px;`) // per-character sweep effect
+                element.setAttribute("style", `position:relative;left:${Math.cos((time * speed) - i) * amplitude}px;`) // per-character sweep effect
                 i += frequency
             }
             requestAnimationFrame(sweep)
@@ -147,7 +165,7 @@
             let wavers = document.getElementsByClassName("wave")
             let i = 0
             for (let element of wavers) {
-                element.setAttribute("style", `position:relative;top:${Math.sin((time * speed) + i) * amplitude}px;left:${Math.cos((time * speed) + i) * amplitude}px;`) // per-character wave effect
+                element.setAttribute("style", `position:relative;top:${Math.sin((time * speed) - i) * amplitude}px;left:${Math.cos((time * speed) - i) * amplitude}px;`) // per-character wave effect
                 i += frequency
             }
             requestAnimationFrame(wave)
