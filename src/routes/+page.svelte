@@ -3,6 +3,7 @@
     import { noise } from "$lib/assets/noise.js"
     import { onMount } from "svelte";
 
+    const defaultCharSpeed = 30
     const punctuationSpeeds = {
         " ": 20,
         ",": 200,
@@ -14,46 +15,83 @@
         "/": 150,
     }
 
-    let defaultCharSpeed = 30
+    let charSpeed = defaultCharSpeed
     let totalDialogue = "" // total text in current dialogue bubble
     /** @type {{ text: string; color: string; moveEffect: string;}[]} */
-    let splitDialogue = []
-    let sectionIndex = 0
+    let splitDialogue = [] // array of all section objects in current bubble
+    let sectionIndex = 0 // index of section we are currently writing to visible from
+    let bubbleIndex = 0
     let isSectionNew = true
     let invisible = ""
     let visible = ""
     let texting = false
+    let bubbleComplete = false
+    let timeoutID = 0
 
-    // content has all text from conversation. content[0] is first dialogue block. content[x][0] is first section from x dialogue block (separated so that different effects may be applied)
-    json.content[0].forEach(element => {totalDialogue += element.text});
-    invisible = totalDialogue
-    splitDialogue = json.content[0]
+    loadDialogue(bubbleIndex)
 
-    function dialogueClick() {
-        if (texting === true) {
-            texting = false
-            visible = totalDialogue
-            invisible = ""
+    /** @param {number} num */
+    function loadDialogue(num){ // load next bubble
+        // content has all text from conversation. content[0] is first dialogue block. 
+        // content[x][0] is first section from x dialogue block (separated so that different effects may be applied)
+        if (num + 1 > json.content.length || num < 0) {return false}
+        bubbleComplete = false
+        texting = false
+        visible = ""
+        sectionIndex = 0
+        totalDialogue = ""
+        json.content[num].forEach(element => {totalDialogue += element.text});
+        invisible = totalDialogue
+        splitDialogue = structuredClone(json.content[num])
+    }
+
+    function dialogueClick(dir = 1) {
+        // console.log("clicked dialogue. texting is " + texting + ". bubbleComplete is " + bubbleComplete + ". first text is " + json.content[bubbleIndex][0].text)
+        if (bubbleComplete === true) {
+            bubbleIndex += dir // load next bubble if all text has been written
+            if (loadDialogue(bubbleIndex) == false) {
+                bubbleIndex -= dir
+                return
+            }
+            // console.log("next bubble")
+        } else if (texting === true) {
+            clearTimeout(timeoutID) // skip dialogue if in the middle of writing
+            addLetter(true)
+            // console.log("skipped writing")
             return
         }
+        // console.log("starting dialogue")
         texting = true
-        setTimeout(addLetter, 10)
+        addLetter()
+    }
+
+    function nextClick() {
+        dialogueClick(1)
+    }
+
+    function backClick() {
+        dialogueClick(-1)
     }
 
     /** @param {KeyboardEvent} event */
     function dialogueButton(event) {
-        if (event.key != " ") {return}
-        dialogueClick()
+        if (event.key == "ArrowRight" || event.key == "d" || event.key == " ") {nextClick()}
+        else if (event.key == "ArrowLeft" || event.key == "a") {backClick()}
     }
 
-    function addLetter() {
+    function addLetter(skip = false) {
         if (texting == false) {return}
-        if (invisible.length <= 0) {texting = false; return}
+        // if (invisible.length <= 0) {texting = false; return}
         if (splitDialogue[sectionIndex].text.length <= 0) {
             if (sectionIndex < splitDialogue.length - 1) { // if there's another section of text move to it when the current section runs out
                 sectionIndex += 1
                 isSectionNew = true
-            } else {return}
+            } else {
+                console.log("finished writing")
+                bubbleComplete = true
+                texting = false
+                return
+            }
         }
 
         if (isSectionNew) { // add color span
@@ -91,7 +129,9 @@
         if (splitDialogue[sectionIndex].text.length <= 0) {
             if (splitDialogue[sectionIndex].color != "") {visible += `</span>`}
         }
-        setTimeout(addLetter, charSpeed)
+
+        if (skip) {addLetter(true)} // if skip is on instantly write next letter
+        else {timeoutID = setTimeout(addLetter, charSpeed)}
     }
 
     /**
@@ -103,7 +143,7 @@
         return Math.min(Math.max(num, lower), upper);
     }
 
-    onMount(() => {
+    onMount(() => { // text effects
         let shakeLastTime = document.timeline.currentTime
         /** @param {number} time */
         function shake(time) {
@@ -176,14 +216,21 @@
 
 <svelte:window onkeyup={dialogueButton}></svelte:window>
 <div class="dialogue-box">
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div class="dialogue-background-layer-back">
         <div class="dialogue-background-layer-front">
             <p class="dialogue-text"><span class="visible-text">{@html visible}</span>{@html invisible}</p>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="caret-down" viewBox="0 0 16 16" onclick={dialogueClick}>
-                <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
-            </svg>
+            <div class="controls">
+                <button title="Dialogue Back" class="caret caret-back" onclick={backClick}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 0.48 0.48" transform="matrix(6.123233995736766e-17,1,1,-6.123233995736766e-17,0,0)">
+                    <path d="M0.405 0.35H0.07l0.1685 -0.25Z"/>
+                </svg>
+                </button>
+                <button title="Dialogue Next" class="caret caret-next" onclick={nextClick}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 0.48 0.48" transform="matrix(1,0,0,-1,0,0)">
+                    <path d="M0.405 0.35H0.07l0.1685 -0.25Z"/>
+                </svg>
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -232,17 +279,42 @@
 .dialogue-text {
     height: 6em;
     color: transparent;
+    overflow-wrap: break-word;
 }
 
 .visible-text {
     color: white;
 }
 
-.caret-down {
+.controls {
+    display: flex;
+    justify-content: end;
+}
+
+.caret {
     display: block;
-    margin-left: auto;
     width: 2em;
     height: 2em;
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    background-color: transparent;
+    color: white;
+    transform: translate(0px, 0px);
+    transition: transform 50ms ease-out;
+}
+
+.caret svg {
+    width: 100%;
+    height: 100%;
+}
+
+.caret-back:active {
+    transform: translate(-5px, 0px);
+}
+
+.caret-next:active {
+    transform: translate(0px, 5px);
 }
 
 /* .shake {
