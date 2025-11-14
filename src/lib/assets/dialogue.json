@@ -3,88 +3,110 @@
     "content": [
         [
             {
+                "text": "-- Toda Forma De Poder --",
+                "color": "orange",
+                "moveEffect": "center",
+                "emotion": "",
+                "image": "",
+                "sound": ""
+            }
+        ],
+        [
+            {
                 "text": "Eu ",
                 "color": "",
                 "moveEffect": "",
                 "emotion": "",
-                "image": ""
+                "image": "",
+                "sound": ""
             },
             {
                 "text": "presto atenção",
                 "color": "red",
                 "moveEffect": "shake",
                 "emotion": "",
-                "image": ""
+                "image": "",
+                "sound": ""
             },
             {
                 "text": " no que eles dizem\n",
                 "color": "",
                 "moveEffect": "",
                 "emotion": "",
-                "image": ""
+                "image": "",
+                "sound": ""
             },
             {
                 "text": "Mas eles não dizem nada ",
                 "color": "",
                 "moveEffect": "",
                 "emotion": "",
-                "image": ""
+                "image": "",
+                "sound": ""
             },
             {
                 "text": "(yeah, yeah)",
                 "color": "green",
                 "moveEffect": "float",
                 "emotion": "",
-                "image": ""
+                "image": "",
+                "sound": ""
             },
             {
                 "text": "\n",
                 "color": "",
                 "moveEffect": "",
                 "emotion": "",
-                "image": ""
+                "image": "",
+                "sound": ""
             },
             {
                 "text": "Fidel",
                 "color": "yellow",
                 "moveEffect": "sweep",
                 "emotion": "",
-                "image": ""
+                "image": "",
+                "sound": ""
             },
             {
                 "text": " e ",
                 "color": "",
                 "moveEffect": "sweep",
                 "emotion": "",
-                "image": ""
+                "image": "",
+                "sound": ""
             },
             {
                 "text": "Pinochet",
                 "color": "yellow",
                 "moveEffect": "sweep",
                 "emotion": "",
-                "image": ""
+                "image": "",
+                "sound": ""
             },
             {
                 "text": " tiram sarro de você\n",
                 "color": "",
                 "moveEffect": "",
                 "emotion": "",
-                "image": ""
+                "image": "",
+                "sound": ""
             },
             {
                 "text": "Que não faz nada ",
                 "color": "",
                 "moveEffect": "",
                 "emotion": "",
-                "image": ""
+                "image": "",
+                "sound": ""
             },
             {
                 "text": "(yeah, yeah)",
                 "color": "blue",
                 "moveEffect": "wave",
                 "emotion": "",
-                "image": ""
+                "image": "",
+                "sound": ""
             }
         ],
         [
@@ -93,7 +115,8 @@
                 "color": "",
                 "moveEffect": "",
                 "emotion": "",
-                "image": ""
+                "image": "",
+                "sound": ""
             }
         ]
     ]

@@ -27,12 +27,15 @@
     let texting = false
     let bubbleComplete = false
     let timeoutID = 0
+    let speechSpeed = 1.0
+    /** @type {HTMLParagraphElement} */
+    let textBox
 
     loadDialogue(bubbleIndex)
 
     /** @param {number} num */
     function loadDialogue(num){ // load next bubble
-        // content has all text from conversation. content[0] is first dialogue block. 
+        // content has all text from conversation. content[0] is first dialogue block.
         // content[x][0] is first section from x dialogue block (separated so that different effects may be applied)
         if (num + 1 > json.content.length || num < 0) {return false}
         bubbleComplete = false
@@ -40,6 +43,7 @@
         visible = ""
         sectionIndex = 0
         totalDialogue = ""
+        isSectionNew = true
         json.content[num].forEach(element => {totalDialogue += element.text});
         invisible = totalDialogue
         splitDialogue = structuredClone(json.content[num])
@@ -53,6 +57,7 @@
                 bubbleIndex -= dir
                 return
             }
+            center(bubbleIndex === 0) // first bubble is always centered (title)
             // console.log("next bubble")
         } else if (texting === true) {
             clearTimeout(timeoutID) // skip dialogue if in the middle of writing
@@ -87,7 +92,7 @@
                 sectionIndex += 1
                 isSectionNew = true
             } else {
-                console.log("finished writing")
+                // console.log("finished writing")
                 bubbleComplete = true
                 texting = false
                 return
@@ -111,7 +116,14 @@
         } else {
             visible += splitDialogue[sectionIndex].text.charAt(0)
         }
-        
+
+        isSectionNew = false
+        splitDialogue[sectionIndex].text = splitDialogue[sectionIndex].text.slice(1)
+        invisible = invisible.slice(1) // delete first character
+
+        if (splitDialogue[sectionIndex].text.length <= 0) {
+            if (splitDialogue[sectionIndex].color != "") {visible += `</span>`}
+        }
 
         let charSpeed = defaultCharSpeed 
         let punctuation = Object.keys(punctuationSpeeds)
@@ -122,16 +134,13 @@
             }
         }
 
-        isSectionNew = false
-        splitDialogue[sectionIndex].text = splitDialogue[sectionIndex].text.slice(1)
-        invisible = invisible.slice(1) // delete first character
-
-        if (splitDialogue[sectionIndex].text.length <= 0) {
-            if (splitDialogue[sectionIndex].color != "") {visible += `</span>`}
-        }
-
         if (skip) {addLetter(true)} // if skip is on instantly write next letter
-        else {timeoutID = setTimeout(addLetter, charSpeed)}
+        else {timeoutID = setTimeout(addLetter, charSpeed * speechSpeed)}
+    }
+
+    function center(bool = true) {
+        textBox.style.textAlign = bool ? "center" : "start"
+        textBox.style.alignContent = bool ? "center" : "start"
     }
 
     /**
@@ -218,7 +227,7 @@
 <div class="dialogue-box">
     <div class="dialogue-background-layer-back">
         <div class="dialogue-background-layer-front">
-            <p class="dialogue-text"><span class="visible-text">{@html visible}</span>{@html invisible}</p>
+            <p class="dialogue-text" bind:this={textBox}><span class="visible-text">{@html visible}</span>{@html invisible}</p>
             <div class="controls">
                 <button title="Dialogue Back" class="caret caret-back" onclick={backClick}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 0.48 0.48" transform="matrix(6.123233995736766e-17,1,1,-6.123233995736766e-17,0,0)">
@@ -280,6 +289,8 @@
     height: 6em;
     color: transparent;
     overflow-wrap: break-word;
+    text-align: center;
+    align-content: center;
 }
 
 .visible-text {
