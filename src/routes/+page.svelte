@@ -1,9 +1,12 @@
 <script lang="js">
-    import * as json from "$lib/assets/dialogue.json"
+    import * as json from "$lib/assets/test-dialogue.json"
     import { noise } from "$lib/assets/noise.js"
+    import {Howl, Howler} from 'howler';
     import { onMount } from "svelte";
+    // import * as talk from "src/routes/sounds/female_standard_1.ogg"
 
     const defaultCharSpeed = 30
+    const rateRandomRange = 0.3
     const punctuationSpeeds = {
         " ": 20,
         ",": 200,
@@ -17,7 +20,7 @@
 
     let charSpeed = defaultCharSpeed
     let totalDialogue = "" // total text in current dialogue bubble
-    /** @type {{ text: string; color: string; moveEffect: string;}[]} */
+    /** @type {{ text: string; color: string | null; moveEffect: string | null; emotion: string | null; image: string | null; imageAlt: string | null; sound: string | null; background: string | null; }[]} */ // text can't be null apparently even though it can
     let splitDialogue = [] // array of all section objects in current bubble
     let sectionIndex = 0 // index of section we are currently writing to visible from
     let bubbleIndex = 0
@@ -30,6 +33,25 @@
     let speechSpeed = 1.0
     /** @type {HTMLParagraphElement} */
     let textBox
+    /** @type {HTMLSpanElement} */
+    let visibleBox
+    let imageUrl = ""
+    let imageAlt = ""
+    let emotionUrl = ""
+    let sceneBackground = "none"
+    let soundLoaded = false
+    // let context = new AudioContext()
+
+    let sound = new Howl({
+        src: ['src/routes/sounds/female_standard_1.ogg']
+    });
+
+    // Clear listener after first call.
+    // @ts-ignore
+    sound.once('load', function(){
+        soundLoaded = true
+        sound.volume(0.1)
+    });
 
     loadDialogue(bubbleIndex)
 
@@ -80,11 +102,14 @@
 
     /** @param {KeyboardEvent} event */
     function dialogueButton(event) {
-        if (event.key == "ArrowRight" || event.key == "d" || event.key == " ") {nextClick()}
-        else if (event.key == "ArrowLeft" || event.key == "a") {backClick()}
+        if (event.key == "ArrowRight" || event.key == "d" || event.key == " ") {nextClick(); event.preventDefault()}
+        else if (event.key == "ArrowLeft" || event.key == "a") {backClick(); event.preventDefault()}
     }
 
+    const soundRate = 3
+    let soundQueue = 0
     function addLetter(skip = false) {
+        // console.log(sectionIndex)
         if (texting == false) {return}
         // if (invisible.length <= 0) {texting = false; return}
         if (splitDialogue[sectionIndex].text.length <= 0) {
@@ -98,6 +123,17 @@
                 return
             }
         }
+
+        let url = splitDialogue[sectionIndex].background
+        if (url === "none") {
+            sceneBackground = "none"
+        } else if (url !== "" && url !== null && url !== undefined) {
+            sceneBackground = "url(/src/routes/images/" + url + ")"
+        }
+
+        imageUrl = splitDialogue[sectionIndex].image ?? "" === "" ? "/src/routes/images/" + splitDialogue[sectionIndex].image : ""
+        imageAlt = splitDialogue[sectionIndex].imageAlt ?? "" // if image is "" or null or undefined in the json set it to "". otherwise add the path to it and go ^ v
+        emotionUrl = splitDialogue[sectionIndex].emotion ?? "" === "" ? "/src/routes/emotions/" + splitDialogue[sectionIndex].emotion : ""
 
         if (isSectionNew) { // add color span
             if (splitDialogue[sectionIndex].color != "") {visible += `<span style="color: ${splitDialogue[sectionIndex].color};">`}
@@ -125,22 +161,75 @@
             if (splitDialogue[sectionIndex].color != "") {visible += `</span>`}
         }
 
-        let charSpeed = defaultCharSpeed 
+        let thisCharSpeed = charSpeed 
         let punctuation = Object.keys(punctuationSpeeds)
+        let isPunctuation = false
         for (const value of punctuation.keys()) { // increase next character delay if current chraracter is punctuation
             if (splitDialogue[sectionIndex].text.charAt(0) == punctuation[value]) {
-                charSpeed = Object.values(punctuationSpeeds)[value]
+                isPunctuation = true
+                thisCharSpeed = Object.values(punctuationSpeeds)[value]
                 break
             }
         }
 
+        if (soundLoaded && skip === false && isPunctuation === false && bubbleIndex !== 0) {
+            if (soundQueue >= soundRate) {
+                sound.rate(getRandomArbitrary(0.9, 1.1))
+                // @ts-ignore
+                sound.play()
+                soundQueue = 0
+            } else {
+                soundQueue += 1
+            }
+        }
+
         if (skip) {addLetter(true)} // if skip is on instantly write next letter
-        else {timeoutID = setTimeout(addLetter, charSpeed * speechSpeed)}
+        else {timeoutID = setTimeout(addLetter, thisCharSpeed * speechSpeed)}
     }
 
     function center(bool = true) {
         textBox.style.textAlign = bool ? "center" : "start"
         textBox.style.alignContent = bool ? "center" : "start"
+        visibleBox.style.color = bool ? "orange" : ""
+    }
+
+    // /**
+    //  * @param {{ decodeAudioData: (arg0: ArrayBuffer) => any; }} audioContext
+    //  * @param {RequestInfo | URL} filepath
+    //  */
+    // async function getFile(audioContext, filepath) {
+    //     const response = await fetch(filepath);
+    //     const arrayBuffer = await response.arrayBuffer();
+    //     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    //     return audioBuffer;
+    // }
+
+    // async function setupSample() {
+    //     const filePath = "dtmf.mp3";
+    //     const sample = await getFile(context, filePath);
+    //     return sample;
+    // }
+
+    // /**
+    //  * @param {BaseAudioContext} audioContext
+    //  * @param {any} audioBuffer
+    //  */
+    // function playSample(audioContext, audioBuffer) {
+    //     const sampleSource = new AudioBufferSourceNode(audioContext, {
+    //         buffer: audioBuffer,
+    //         // playbackRate,
+    //     });
+    //     sampleSource.connect(audioContext.destination);
+    //     sampleSource.start(0);
+    //     return sampleSource;
+    // }
+
+    /**
+     * @param {number} min
+     * @param {number} max
+     */
+    function getRandomArbitrary(min, max) {
+        return Math.random() * (max - min) + min;
     }
 
     /**
@@ -224,34 +313,71 @@
 </script>
 
 <svelte:window onkeyup={dialogueButton}></svelte:window>
-<div class="dialogue-box">
-    <div class="dialogue-background-layer-back">
-        <div class="dialogue-background-layer-front">
-            <p class="dialogue-text" bind:this={textBox}><span class="visible-text">{@html visible}</span>{@html invisible}</p>
-            <div class="controls">
-                <button title="Dialogue Back" class="caret caret-back" onclick={backClick}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 0.48 0.48" transform="matrix(6.123233995736766e-17,1,1,-6.123233995736766e-17,0,0)">
-                    <path d="M0.405 0.35H0.07l0.1685 -0.25Z"/>
-                </svg>
-                </button>
-                <button title="Dialogue Next" class="caret caret-next" onclick={nextClick}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 0.48 0.48" transform="matrix(1,0,0,-1,0,0)">
-                    <path d="M0.405 0.35H0.07l0.1685 -0.25Z"/>
-                </svg>
-                </button>
+<div class="scene-container" style={"background-image: " + sceneBackground + ";"}>
+    <div class="graphics-box">
+        <img class="sprite" src={emotionUrl} alt="">
+        <img class="presentation" src={imageUrl} alt={imageAlt}>
+    </div>
+    <div class="dialogue-box">
+        <div class="dialogue-background-layer-back">
+            <div class="dialogue-background-layer-front">
+                <p class="dialogue-text" bind:this={textBox}><span class="visible-text" bind:this={visibleBox}>{@html visible}</span>{@html invisible}</p>
+                <div class="controls">
+                    <button title="Dialogue Back" class="caret caret-back" onclick={backClick}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 0.48 0.48" transform="matrix(6.123233995736766e-17,1,1,-6.123233995736766e-17,0,0)">
+                            <path d="M0.405 0.35H0.07l0.1685 -0.25Z"/>
+                        </svg>
+                    </button>
+                    <button title="Dialogue Next" class="caret caret-next" onclick={nextClick}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 0.48 0.48" transform="matrix(1,0,0,-1,0,0)">
+                            <path d="M0.405 0.35H0.07l0.1685 -0.25Z"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 </div>
+<!-- <audio src="src/routes/sounds/female_standard_1.ogg" bind:this={playerElement}></audio> -->
 
 <style>
 @import "$lib/assets/style.css";
 
+.scene-container {
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    justify-content: space-between;
+    height: 100vh;
+    width: 100vw;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+}
+
+.graphics-box {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    justify-content: space-between;
+    height: 85vh;
+    width: 55vw;
+    margin-top: 2em;
+}
+
+.sprite {
+    max-height: 100%;
+}
+
+.presentation {
+    max-height: 50vh;
+    max-width: 20em;
+}
+
 .dialogue-box {
-    color: white;
-    font-size: 24px;
     width: 40em;
     height: 10em;
+    /* margin-bottom: 2em; */
     position: absolute;
     margin: 0 auto;
     bottom: 2em;
@@ -266,6 +392,8 @@
 
 .dialogue-background-layer-back {
     background-image: url("$lib/assets/64-checkers.png");
+    width: 100%;
+    height: 100%;
     animation: 6s linear infinite back-slide;
 }
 
@@ -276,7 +404,12 @@
 
 .dialogue-background-layer-front {
     background-image: url("$lib/assets/128-checkers.png");
-    padding: 1em 2em;
+    width: 100%;
+    height: 100%;
+    padding: 1em 0.5em 0.5em 2em;
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: space-between;
     animation: 3s linear infinite front-slide;
 }
 
@@ -287,6 +420,7 @@
 
 .dialogue-text {
     height: 6em;
+    margin-right: 1.5em;
     color: transparent;
     overflow-wrap: break-word;
     text-align: center;
@@ -326,6 +460,10 @@
 
 .caret-next:active {
     transform: translate(0px, 5px);
+}
+
+audio {
+    display: none;
 }
 
 /* .shake {
